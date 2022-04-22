@@ -2,26 +2,33 @@
 # Aufgabe 1:
 # Netzwerkgraph als Inzidenzmatrix mit Kosten als Einträge
 # Knoten und Kanten beginnen jeweils bei Index 1, nicht 0!
-class Netzwerkgraph:
+# Weiterhin können Knoten benannt werden und sind eindeutig durch ihren Index im Graphen bestimmt
+
+from math import log2, ceil
+import random
+
+
+class Graph:
     def __init__(self):
         self.graph = [["+ "]]
         self.node_count = 0
         self.edge_count = 0
 
-    def add_node(self):
+    def add_node(self, name=None):
         self.node_count = self.node_count+1
-        name = f"V{self.node_count}"
+        if name is None:
+            name = f"V{self.node_count}"
         self.graph.append([name])
 
     # Kante hinzufügen, benötigt Kosten und zu verbindende Knoten
-    # Selbstschleifen und Multiverbindungen in Aufgabenstellung nicht erwähnt, deshalb zugelassen
+    # Selbstschleifen nicht zugelassen
     def add_edge(self, cost, node_one, node_two):
         if cost <= 0:
             print("Cost needs to be greater than 0!")
             return
         number_of_nodes = len(self.graph)-1
-        if number_of_nodes < 1:
-            print("There are no nodes in the graph!")
+        if number_of_nodes < 2:
+            print("There are not enough nodes in the graph!")
             return
         if node_one > number_of_nodes or node_two > number_of_nodes:
             print(f"Given index out of range (1 - {number_of_nodes})")
@@ -29,7 +36,7 @@ class Netzwerkgraph:
         self.edge_count = self.edge_count+1
         name = f"E{self.edge_count}"
         self.graph[0].append(name)
-        for i in range(1, number_of_nodes):
+        for i in range(1, number_of_nodes+1):
             if i == node_one or i == node_two:
                 self.graph[i].append(cost)
             else:
@@ -89,9 +96,43 @@ class Netzwerkgraph:
         return_string = ""
         for row in self.graph:
             for edge in row:
-                return_string = return_string + str(edge) + "\t|"
+                if len(str(edge)) >= 3 and str(edge).startswith("E"):
+                    return_string = return_string + str(edge) + "\t|"
+                else:
+                    return_string = return_string + str(edge) + "\t\t|"
             return_string = return_string + "\n"
         return return_string
+
+    def print(self):
+        print(self)
+
+    def clone(self):
+        clone = Graph()
+        for i in range(1, self.node_count+1):
+            clone.add_node()
+        for i in range(1, self.edge_count+1):
+            edge = []
+            cost = 0
+            for j in range(1, self.node_count+1):
+                if int(self.graph[j][i]) != 0:
+                    cost = (self.graph[j][i])
+                    edge.append(j)
+            clone.add_edge(cost, edge[0], edge[1])
+        return clone
+
+    def add_random_edge(self, cost):
+        if cost <= 0:
+            print("Cost needs to be greater than 0!")
+            return
+        number_of_nodes = len(self.graph)-1
+        if number_of_nodes < 2:
+            print("There are not enough nodes in the graph!")
+            return
+        random_one = random.randint(1, self.node_count)
+        random_two = random.randint(1, self.node_count)
+        while random_one == random_two:
+            random_two = random.randint(1, self.node_count)
+        self.add_edge(cost, random_one, random_two)
 
     # Aufgabe 3
     def get_grade(self):
@@ -107,14 +148,33 @@ class Netzwerkgraph:
 
 
 # Aufgabe 2:
-# TODO: Hypercube, Matrix, Zufall
-# Für Zufall: Hilfsfunktion zur Überprüfung von Pfadvollständigkeit
+# TODO: Hypercube, Torus, Fat-Tree
+
+# Hilfsfunktion zur Überprüfung von Pfadvollständigkeit
+def find_paths(graph):
+    number_of_nodes = int(graph.node_count)
+    not_visited = [i for i in range(2, number_of_nodes+1)]
+    queue = [1]
+    # path = "1"
+    while queue:
+        node = queue[0]
+        queue.pop(0)
+        for i in range(1, graph.edge_count+1):
+            if int(graph.graph[node][i]) != 0:
+                for j in range(1, number_of_nodes+1):
+                    if int(graph.graph[j][i]) != 0:
+                        if j in not_visited:
+                            not_visited.pop(not_visited.index(j))
+                            queue.append(j)
+                            # path = f"{path} - {j}"
+    return len(not_visited) == 0
+            
 
 def create_ring(number_of_nodes):
     if number_of_nodes < 2:
         print("At least three nodes needed to create a ring!")
         return
-    ring_graph = Netzwerkgraph()
+    ring_graph = Graph()
     for i in range(number_of_nodes):
         ring_graph.add_node()
     for i in range(number_of_nodes-1):
@@ -127,7 +187,7 @@ def create_star(number_of_nodes):
     if number_of_nodes < 2:
         print("At least two nodes needed to create a star!")
         return
-    star_graph = Netzwerkgraph()
+    star_graph = Graph()
     for i in range(number_of_nodes):
         star_graph.add_node()
     for i in range(2, number_of_nodes+1):
@@ -135,14 +195,44 @@ def create_star(number_of_nodes):
     return star_graph
 
 
-def create_tree(number_of_nodes, number_of_children):
+def create_vollverbunden(number_of_nodes):
+    if number_of_nodes < 1:
+        print("Number of nodes must be greater than 0!")
+        return
+    vollverbunden_graph = Graph()
+    for i in range(number_of_nodes):
+        vollverbunden_graph.add_node()
+    for i in range(1, number_of_nodes+1):
+        for j in range(i+1, number_of_nodes+1):
+            vollverbunden_graph.add_edge(1, i, j)
+    return vollverbunden_graph
+
+
+# Funktioniert so noch nicht!
+def create_hypercube(number_of_nodes):
+    if number_of_nodes < 1:
+        print("Number of nodes must be greater than 0!")
+        return
+    hypercube_graph = Graph()
+    dimensions = ceil(log2(number_of_nodes))
+    for i in range(number_of_nodes):
+        hypercube_graph.add_node()
+    for i in range(1, dimensions+1):
+        for j in range(1, int((2**i)/2)+1):
+            node_two = (2**i)+1-j
+            if node_two <= number_of_nodes:
+                hypercube_graph.add_edge(1, j, node_two)
+    return hypercube_graph
+
+
+def create_k_tree(number_of_nodes, number_of_children):
     if number_of_children != 2 and number_of_children != 4 and number_of_children != 8:
         print("Number of children must be 2, 4 or 8!")
         return
     if number_of_nodes < 1:
         print("Number of nodes must be greater than 0!")
         return
-    tree_graph = Netzwerkgraph()
+    tree_graph = Graph()
     for i in range(number_of_nodes):
         tree_graph.add_node()
     parent = 1
@@ -155,31 +245,47 @@ def create_tree(number_of_nodes, number_of_children):
     return tree_graph
 
 
-def create_vollvermascht(number_of_nodes):
-    if number_of_nodes < 1:
-        print("Number of nodes must be greater than 0!")
+def create_random(number_of_nodes):
+    if number_of_nodes < 2:
+        print("At least two nodes needed to create a star!")
         return
-    vollvermascht_graph = Netzwerkgraph()
+    random_graph = Graph()
     for i in range(number_of_nodes):
-        vollvermascht_graph.add_node()
-    for i in range(1, number_of_nodes+1):
-        for j in range(i+1, number_of_nodes+1):
-            vollvermascht_graph.add_edge(1, i, j)
-    return vollvermascht_graph
+        random_graph.add_node()
+    for i in range(number_of_nodes-1):
+        random_graph.add_random_edge(1)
+    while not find_paths(random_graph):
+        random_graph.add_random_edge(1)
+    return random_graph
 
 
-ring = create_ring(10)
-star = create_star(10)
-vollvermascht = create_vollvermascht(10)
-tree_two = create_tree(10, 2)
-tree_four = create_tree(10, 4)
-tree_eight = create_tree(10, 8)
+# debug_graph = Netzwerkgraph()
+# for i in range(3):
+#     debug_graph.add_node()
+# for i in range(10):
+#     debug_graph.add_edge(1, 2, 3)
+#
+# debug_graph.print()
+#
+# print(find_paths(debug_graph))
+
+
+# ring = create_ring(10)
+# star = create_star(10)
+# vollverbunden = create_vollverbunden(10)
+# # hypercube = create_hypercube(16)
+# tree_two = create_k_tree(10, 2)
+# tree_four = create_k_tree(10, 4)
+# tree_eight = create_k_tree(10, 8)
+random_graph = create_random(10)
+
+random_graph.print()
 
 # Aufgabe 4:
-print("Grade bei 10 Teilnehmer*innen:")
-print(f"Ring: {ring.get_grade()}")
-print(f"Stern: {star.get_grade()}")
-print(f"2-Tree: {tree_two.get_grade()}")
-print(f"4-Tree: {tree_four.get_grade()}")
-print(f"8-Tree: {tree_eight.get_grade()}")
-print(f"Vollvermascht: {vollvermascht.get_grade()}")
+# print("Grade bei 10 Teilnehmer*innen:")
+# print(f"Ring: {ring.get_grade()}")
+# print(f"Stern: {star.get_grade()}")
+# print(f"2-Tree: {tree_two.get_grade()}")
+# print(f"4-Tree: {tree_four.get_grade()}")
+# print(f"8-Tree: {tree_eight.get_grade()}")
+# print(f"Vollverbunden: {vollverbunden.get_grade()}")
