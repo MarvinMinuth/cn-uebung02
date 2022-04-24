@@ -1,34 +1,281 @@
+from math import log2, ceil
+import random
+
+
 class Netgraph:
     def __init__(self):
-        self.nodes = set()
-        self.edges = set()
+        self.nodes = []
+        self.edges = []
+        self.node_count = 0
+        self.edge_count = 0
 
-    def add_node(self, node=None):
-        if node is None:
-            self.nodes.add(Node())
-        else:
-            self.nodes.add(node)
+    class Node:
+        def __init__(self, netgraph, name=None):
+            self.netgraph = netgraph
+            if name is None:
+                self.name = f"V{netgraph.node_count}"
+            else:
+                self.name = name
+            self.edges = []
+            netgraph.node_count += 1
 
-    def add_new_edge(self, cost, node_one, node_two):
-        edge = Edge(cost, node_one, node_two)
-        self.edges.add(edge)
+        def __gt__(self, other):
+            return len(self.edges) > len(other.edges)
 
-    def add_edge(self, edge):
-        self.
+        def get_neighbor_at_edge(self, edge):
+            if self == edge.nodes[0]:
+                return edge.nodes[1]
+            else:
+                return edge.nodes[0]
+
+        def get_neighbors(self):
+            neighbors = []
+            for edge in self.edges:
+                neighbors.append(self.get_neighbor_at_edge(edge))
+            return neighbors
+
+        def delete(self):
+            for edge in self.edges:
+                edge.delete()
+            self.netgraph.nodes.remove(self)
+            self.netgraph.node_count -= 1
+
+        def __str__(self):
+            return self.name
+
+    class Edge:
+        def __init__(self, netgraph, cost, node_one, node_two):
+            self.netgraph = netgraph
+            self.nodes = [node_one, node_two]
+            self.cost = cost
+            node_one.edges.append(self)
+            node_two.edges.append(self)
+            netgraph.edge_count += 1
+
+        def delete(self):
+            for node in self.nodes:
+                node.edges.remove(self)
+            self.netgraph.edges.remove(self)
+            self.netgraph.edge_count -= 1
+
+    def add_node(self, name=None):
+        node = self.Node(self, name)
+        self.nodes.append(node)
+
+    def add_edge(self, cost, node_one, node_two):
+        edge = self.Edge(self, cost, node_one, node_two)
+        self.edges.append(edge)
+
+    def add_random_edge(self, cost):
+        if cost <= 0:
+            print("Cost needs to be greater than 0!")
+            return
+        if self.node_count < 2:
+            print("There are not enough nodes in the graph!")
+            return
+        random_one = random.randint(0, self.node_count - 1)
+        random_two = random.randint(0, self.node_count - 1)
+        while random_one == random_two:
+            random_two = random.randint(0, self.node_count - 1)
+        self.add_edge(cost, self.nodes[random_one], self.nodes[random_two])
+
+    def is_complete(self):
+        not_visited = []
+        for node in self.nodes:
+            not_visited.append(node)
+        queue = [not_visited[0]]
+        not_visited.pop(0)
+        while queue:
+            for neighbor in queue[0].get_neighbors():
+                if neighbor in not_visited:
+                    queue.append(neighbor)
+                    not_visited.remove(neighbor)
+            queue.pop(0)
+        return not not_visited
+
+    def get_grade(self):
+        grade = 0
+        for node in self.nodes:
+            node_grade = len(node.edges)
+            if node_grade > grade:
+                grade = node_grade
+        return grade
+
+    def get_neighbors(self, node):
+        return node.get_neighbors()
+
+    def merge_nodes(self, node_one, node_two):
+        for edge in node_one.edges:
+            if edge not in node_two.edges:
+                if edge.nodes[0] == node_one:
+                    self.add_edge(edge.cost, node_two, edge.nodes[1])
+                else:
+                    self.add_edge(edge.cost, node_two, edge.nodes[0])
+        node_one.delete()
+
+    def get_connectivity(self):
+        return minimum_cut(self, self.nodes[0])
+
+    def print(self):
+        return_string = "\t\t"
+        for i in range(self.edge_count):
+            if i >= 10:
+                return_string = return_string + f"|E{i}\t"
+            else:
+                return_string = return_string + f"|E{i}\t\t"
+        return_string = return_string + "\n"
+        for node in self.nodes:
+            if len(node.name) > 3:
+                return_string = return_string + node.name + "\t"
+            else:
+                return_string = return_string + node.name + "\t\t"
+            for edge in self.edges:
+                if edge in node.edges:
+                    if edge.cost >= 100:
+                        return_string = return_string + "|" + str(edge.cost) + "\t"
+                    else:
+                        return_string = return_string + "|" + str(edge.cost) + "\t\t"
+                else:
+                    return_string = return_string + "|" + str(0) + "\t\t"
+            return_string = return_string + "\n"
+        print(return_string)
+
+    def clone(self):
+        clone_graph = Netgraph()
+        for node in self.nodes:
+            clone_graph.add_node(node.name)
+        for edge in self.edges:
+            index_node_one = self.nodes.index(edge.nodes[0])
+            index_node_two = self.nodes.index(edge.nodes[1])
+            clone_graph.add_edge(edge.cost, clone_graph.nodes[index_node_one], clone_graph.nodes[index_node_two])
+        return clone_graph
 
 
-class Node:
-    def __init__(self, name=None):
-        if name is None:
-            self.name = "Node"
-        else:
-            self.name = name
-        self.edges = set()
+def create_ring(number_of_nodes, cost=1):
+    if number_of_nodes < 3:
+        print("Number of nodes should be at least 3.")
+        return
+    ring_graph = Netgraph()
+    ring_graph.add_node()
+    for i in range(1, number_of_nodes):
+        ring_graph.add_node()
+        ring_graph.add_edge(cost, ring_graph.nodes[i - 1], ring_graph.nodes[i])
+    ring_graph.add_edge(cost, ring_graph.nodes[0], ring_graph.nodes[-1])
+    return ring_graph
 
 
-class Edge:
-    def __init__(self, cost, node_one, node_two):
-        self.nodes = {node_one, node_two}
-        self.cost = cost
-        node_one.edges.add(self)
-        node_two.edges.add(self)
+def create_star(number_of_nodes, cost=1):
+    if number_of_nodes < 1:
+        print("Number of nodes should be at least 1.")
+        return
+    star_graph = Netgraph()
+    star_graph.add_node()
+    for i in range(1, number_of_nodes):
+        star_graph.add_node()
+        star_graph.add_edge(cost, star_graph.nodes[0], star_graph.nodes[i])
+    return star_graph
+
+
+def create_vollverbunden(number_of_nodes, cost=1):
+    if number_of_nodes < 1:
+        print("Number of nodes should be at least 1.")
+        return
+    vollverbunden_graph = Netgraph()
+    for i in range(number_of_nodes):
+        vollverbunden_graph.add_node()
+    for i in range(number_of_nodes):
+        for j in range(i + 1, number_of_nodes):
+            vollverbunden_graph.add_edge(cost, vollverbunden_graph.nodes[i], vollverbunden_graph.nodes[j])
+    return vollverbunden_graph
+
+
+def create_k_tree(k, number_of_nodes, cost=1):
+    if k != 2 and k != 4 and k != 8:
+        print("Number of children must be 2, 4 or 8!")
+        return
+    if number_of_nodes < 1:
+        print("Number of nodes must be greater than 0!")
+        return
+    tree_graph = Netgraph()
+    for i in range(number_of_nodes):
+        tree_graph.add_node()
+    parent_index = 0
+    child_index = 1
+    while child_index < number_of_nodes:
+        tree_graph.add_edge(cost, tree_graph.nodes[parent_index], tree_graph.nodes[child_index])
+        child_index += 1
+        if child_index == (parent_index * k) + (k + 1):
+            parent_index += 1
+    return tree_graph
+
+
+def create_random(number_of_nodes, cost=1):
+    if number_of_nodes < 1:
+        print("Number of nodes must be greater than 0!")
+        return
+    random_graph = Netgraph()
+    for i in range(number_of_nodes):
+        random_graph.add_node()
+    for i in range(number_of_nodes - 1):
+        random_graph.add_random_edge(cost)
+    while not random_graph.is_complete():
+        random_graph.add_random_edge(cost)
+    return random_graph
+
+
+def w(g, A, y):
+    assert y not in A
+    count = 0
+    for v in g.get_neighbors(y):
+        if v in A:
+            count += 1
+    return count
+
+
+def min_cut_phase(g, a):
+    A = set([a])
+    V = set(g.nodes)
+    order = [a]
+    while A != V:
+        w_candidates = [(w(g, A, v), v) for v in V - A]  #: candidates for most tightly connected
+        _, x = max(w_candidates)
+        A.add(x)
+        order.append(x)
+    t, s = order[-1], order[-2]
+
+    min_cut = len(g.get_neighbors(t))
+    g.merge_nodes(t, s)
+    return min_cut
+
+
+def minimum_cut(g, a):
+    min_cut = len(g.get_neighbors(a))
+    while g.node_count > 1:
+        min_cut_candidate = min_cut_phase(g, a)
+        if min_cut_candidate < min_cut:
+            min_cut = min_cut_candidate
+    return min_cut
+
+
+ring = create_ring(10)
+star = create_star(10)
+vollverbunden = create_vollverbunden(10)
+tree_two = create_k_tree(2, 10)
+tree_four = create_k_tree(4, 10)
+tree_eight = create_k_tree(8, 10)
+
+# Aufgabe 4:
+print("Grade bei 10 Teilnehmer*innen:")
+print(f"Ring: {ring.get_grade()}")
+print(f"Stern: {star.get_grade()}")
+print(f"2-Tree: {tree_two.get_grade()}")
+print(f"4-Tree: {tree_four.get_grade()}")
+print(f"8-Tree: {tree_eight.get_grade()}")
+print(f"Vollverbunden: {vollverbunden.get_grade()}")
+
+print(f"Ring: {ring.get_connectivity()}")
+print(f"Stern: {star.get_connectivity()}")
+print(f"2-Tree: {tree_two.get_connectivity()}")
+print(f"4-Tree: {tree_four.get_connectivity()}")
+print(f"8-Tree: {tree_eight.get_connectivity()}")
+print(f"Vollverbunden: {vollverbunden.get_connectivity()}")

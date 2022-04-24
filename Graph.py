@@ -20,7 +20,7 @@ class Graph:
             name = f"V{self.node_count}"
         self.graph.append([name])
 
-    # Kante hinzufügen, benötigt Kosten und zu verbindende Knoten
+    # Kante hinzufügen: benötigt Kosten und zu verbindende Knoten
     # Selbstschleifen nicht zugelassen
     def add_edge(self, cost, node_one, node_two):
         if cost <= 0:
